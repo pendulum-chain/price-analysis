@@ -1,4 +1,4 @@
-import {ethers} from 'ethers';
+import {ethers, Interface} from 'ethers';
 import {Token} from '@uniswap/sdk-core';
 import {
     abi as IUniswapV3PoolABI
@@ -23,25 +23,66 @@ const BRLA_ADDRESS = '0xE6A537a407488807F0bbeb0038B79004f19DDDFb';
 const USDC = new Token(137, USDC_ADDRESS, 6, 'USDC', 'USD Coin');
 const BRLA = new Token(137, BRLA_ADDRESS, 18, 'BRLA', 'BRLA Token');
 
-export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
-    const poolContract: any = new ethers.Contract(POOL_ADDRESS, IUniswapV3PoolABI, provider);
-    const quoterContract: any = new ethers.Contract(QUOTER_ADDRESS, IQuoterV2ABI, provider);
+interface PoolInfo {
+    token0: string;
+    token1: string;
+    fee: number;
+    tickSpacing: number;
+    sqrtPriceX96: ethers.BigNumberish;
+    liquidity: ethers.BigNumberish;
+    tick: number;
+}
 
-    const fee = await poolContract.fee();
+async function getPoolInfo(): Promise<PoolInfo> {
+    // Using `any` to avoid TypeScript errors with ethers.js v6 contract typings.
+    // The methods are dynamically added and TypeScript cannot infer them.
+    const poolContract: any = new ethers.Contract(POOL_ADDRESS, IUniswapV3PoolABI, provider);
+
+    const [token0, token1, fee, tickSpacing, liquidity, slot0] = await Promise.all([
+        poolContract.token0(),
+        poolContract.token1(),
+        poolContract.fee(),
+        poolContract.tickSpacing(),
+        poolContract.liquidity(),
+        poolContract.slot0(),
+    ]);
+
+    return {
+        token0,
+        token1,
+        fee: Number(fee),
+        tickSpacing: Number(tickSpacing),
+        liquidity,
+        sqrtPriceX96: slot0.sqrtPriceX96,
+        tick: Number(slot0.tick),
+    };
+}
+
+export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
+    const poolInterface = new Interface(IUniswapV3PoolABI);
+    const quoterInterface = new Interface(IQuoterV2ABI);
+
+    const poolContract = new ethers.Contract(POOL_ADDRESS, poolInterface, provider);
+    const quoterContract = new ethers.Contract(QUOTER_ADDRESS, quoterInterface, provider);
+
+    const poolInfo = await getPoolInfo();
+    const fee = poolInfo.fee;
 
     const amounts = [1000, 10000, 100000];
     const results: PriceDataAttributes[] = [];
 
+    // This is the signature for the overloaded function that takes a struct
+    const quoteFunction = quoterContract.getFunction("quoteExactInputSingle");
+
     for (const amount of amounts) {
         // Get the USDC -> BRLA price
         const rawAmountUsdc = ethers.parseUnits(amount.toString(), USDC.decimals);
-        const quotedAmountOutBrla = await quoterContract.quoteExactInputSingle.staticCall(
-            USDC.address,
-            BRLA.address,
-            fee,
-            rawAmountUsdc,
-            0
-        );
+        const usdcToBrlaParams = [USDC.address, BRLA.address, Number(rawAmountUsdc), Number(fee), 0];
+        console.log("usdcToBrlaParams:", usdcToBrlaParams);
+        const quotedAmountOutBrlaResult = await quoteFunction.staticCall(usdcToBrlaParams);
+        console.log("quotedAmountOutBrlaResult:", quotedAmountOutBrlaResult);
+        const quotedAmountOutBrla = quotedAmountOutBrlaResult[0];
+
         const rateUsdcBrla = parseFloat(ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals)) / amount;
         console.log(`Got quote for ${amount} USDC -> BRLA:`, ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals), "rate", rateUsdcBrla);
 
@@ -56,13 +97,10 @@ export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
 
         // Get the BRLA -> USDC price
         const rawAmountBrla = ethers.parseUnits(amount.toString(), BRLA.decimals);
-        const quotedAmountOutUsdc = await quoterContract.quoteExactInputSingle.staticCall(
-            BRLA.address,
-            USDC.address,
-            fee,
-            rawAmountBrla,
-            0
-        );
+        const brlaToUsdcParams = [BRLA.address, USDC.address, rawAmountBrla, fee, 0];
+        const quotedAmountOutUsdcResult = await quoteFunction.staticCall(brlaToUsdcParams);
+        const quotedAmountOutUsdc = quotedAmountOutUsdcResult[0];
+
         const rateBrlaUsdc = parseFloat(ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals)) / amount;
         console.log(`Got quote for ${amount} BRLA -> USDC:`, ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals), "rate", rateBrlaUsdc);
 
