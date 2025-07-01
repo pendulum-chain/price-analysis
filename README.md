@@ -27,7 +27,17 @@ To install dependencies:
 bun install
 ```
 
-To run:
+## Database Migration
+
+Before running the application for the first time, you need to initialize the database by running the migration script. This will create the `price_data` table.
+
+```bash
+bun run db:migrate
+```
+
+## Running the Application
+
+To run the main application:
 
 ```bash
 bun run index.ts
