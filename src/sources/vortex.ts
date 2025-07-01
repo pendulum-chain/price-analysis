@@ -1,3 +1,5 @@
+import type { PriceDataAttributes } from '../db/schema';
+
 enum DestinationType {
   Polygon = 'polygon',
   Pix = 'pix',
@@ -26,16 +28,15 @@ interface VortexRequestBody {
   inputAmount: number;
 }
 
-import type { PriceData } from '../types';
 
 interface VortexResponse {
   outputAmount: string;
 }
 
-export async function getVortexPrice(): Promise<PriceData[]> {
+export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
   const VORTEX_API_URL = 'https://api.vortexfinance.co/v1/quotes';
   const amounts = [1000, 10000, 100000];
-  const results: PriceData[] = [];
+  const results: PriceDataAttributes[] = [];
 
   const pairs = [
     {
@@ -90,6 +91,7 @@ export async function getVortexPrice(): Promise<PriceData[]> {
         const rate = outputAmount / amount;
 
         results.push({
+          id: 0,
           timestamp: new Date(),
           source: 'Vortex',
           currency_pair: pair.currency_pair,

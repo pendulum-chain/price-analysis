@@ -1,4 +1,4 @@
-import type { PriceData } from '../types';
+import type { PriceDataAttributes } from '../db/schema';
 
 const API_URL = 'https://api.binance.com/api/v3/depth';
 const SYMBOLS_TO_FETCH = [
@@ -55,8 +55,8 @@ function calculateEffectiveRate(asks: [string, string][], targetAmount: number):
  * Fetches exchange rates from Binance for specified currency pairs and amounts.
  * @returns A promise that resolves to an array of price data.
  */
-export async function getBinancePrice(): Promise<PriceData[]> {
-  const allResults: PriceData[] = [];
+export async function getBinancePrice(): Promise<PriceDataAttributes[]> {
+  const allResults: PriceDataAttributes[] = [];
   const timestamp = new Date();
 
   const fetchPromises = SYMBOLS_TO_FETCH.map(async ({ apiSymbol, pair }) => {
@@ -68,12 +68,13 @@ export async function getBinancePrice(): Promise<PriceData[]> {
         return [];
       }
       const orderBook = (await response.json()) as OrderBook;
-      const resultsForSymbol: PriceData[] = [];
+      const resultsForSymbol: PriceDataAttributes[] = [];
 
       for (const amount of AMOUNTS) {
         const rate = calculateEffectiveRate(orderBook.asks, amount);
         if (rate !== Infinity) {
           resultsForSymbol.push({
+            id: 0,
             timestamp,
             source: 'Binance',
             currency_pair: pair,

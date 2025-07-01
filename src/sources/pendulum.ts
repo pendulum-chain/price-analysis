@@ -1,12 +1,12 @@
-import type { PriceData } from '../types';
+import type { PriceDataAttributes } from '../db/schema';
 import ApiManager from '../utils/api-manager';
 
-export async function getPendulumPrice(): Promise<PriceData[]> {
+export async function getPendulumPrice(): Promise<PriceDataAttributes[]> {
   const api = await ApiManager.getApi('pendulum');
   const decimals = ApiManager.getDecimals('pendulum');
 
   const entries = await (api.query as any).diaOracleModule.coinInfosMap.entries();
-  const prices: PriceData[] = [];
+  const prices: PriceDataAttributes[] = [];
 
   const targetPairs = ['EUR-USD', 'BRL-USD'];
 
@@ -20,6 +20,7 @@ export async function getPendulumPrice(): Promise<PriceData[]> {
 
       for (const amount of [1000, 10000, 100000]) {
         prices.push({
+          id: 0,
           timestamp,
           source: 'Pendulum',
           currency_pair: symbol,

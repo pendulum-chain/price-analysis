@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { Pool } from '@uniswap/v3-sdk';
 import { Token, CurrencyAmount } from '@uniswap/sdk-core';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import type { PriceData } from '../types';
+import type { PriceDataAttributes } from '../db/schema';
 
 // Pool address for USDC/BRLA on Polygon
 const POOL_ADDRESS = '0x0E7754127dEDd4097be750825Dbb4669bc32c956';
@@ -52,7 +52,7 @@ async function getPoolInfo(): Promise<PoolInfo> {
   };
 }
 
-export async function getUniswapPrice(): Promise<PriceData[]> {
+export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
   const poolInfo = await getPoolInfo();
 
   const pool = new Pool(
@@ -65,12 +65,13 @@ export async function getUniswapPrice(): Promise<PriceData[]> {
   );
 
   const amounts = [1000, 10000, 100000];
-  const results: PriceData[] = [];
+  const results: PriceDataAttributes[] = [];
 
   for (const amount of amounts) {
     const amountIn = CurrencyAmount.fromRawAmount(BRLA, (amount * (10 ** BRLA.decimals)).toString());
     const price = pool.token0Price.quote(amountIn);
     results.push({
+      id: 0,
       timestamp: new Date(),
       source: 'Uniswap',
       currency_pair: 'USDC-BRLA',

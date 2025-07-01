@@ -1,13 +1,22 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from './index';
 
-class PriceData extends Model {
-  public id!: number;
-  public timestamp!: Date;
-  public source!: string;
-  public currency_pair!: string;
-  public amount!: number;
-  public rate!: number;
+export interface PriceDataAttributes {
+  id: number;
+  timestamp: Date;
+  source: string;
+  currency_pair: string;
+  amount: number;
+  rate: number;
+}
+
+class PriceData extends Model<PriceDataAttributes> implements PriceDataAttributes {
+  declare id: number;
+  declare timestamp: Date;
+  declare source: string;
+  declare currency_pair: string;
+  declare amount: number;
+  declare rate: number;
 }
 
 PriceData.init(
