@@ -1,9 +1,9 @@
-import sequelize from './src/db';
-import PriceData from './src/db/schema';
-import { getBinancePrice } from './src/sources/binance';
-import { getUniswapPrice } from './src/sources/uniswap';
-import { getPendulumPrice } from './src/sources/pendulum';
-import { getVortexPrice } from './src/sources/vortex';
+import sequelize from './db';
+import PriceData from './db/schema';
+import { getBinancePrice } from './sources/binance';
+import { getUniswapPrice } from './sources/uniswap';
+import { getPendulumPrice } from './sources/pendulum';
+import { getVortexPrice } from './sources/vortex';
 
 async function fetchAndStorePrices() {
   console.log('Fetching and storing prices...');

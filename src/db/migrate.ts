@@ -6,7 +6,7 @@ const migrate = async () => {
     await sequelize.authenticate();
     console.log('Connection has been established successfully.');
     
-    await PriceData.sync({ force: true });
+    await PriceData.sync();
     console.log('Table "price_data" created successfully.');
     
     await sequelize.close();
