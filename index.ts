@@ -1,5 +1,5 @@
-import { db } from './src/db';
-import { priceData } from './src/db/schema';
+import sequelize from './src/db';
+import PriceData from './src/db/schema';
 import { getBinancePrice } from './src/sources/binance';
 import { getUniswapPrice } from './src/sources/uniswap';
 import { getPendulumPrice } from './src/sources/pendulum';
@@ -8,17 +8,18 @@ import { getVortexPrice } from './src/sources/vortex';
 async function fetchAndStorePrices() {
   console.log('Fetching and storing prices...');
   try {
-    const binancePrice = await getBinancePrice();
-    const uniswapPrice = await getUniswapPrice();
-    const pendulumPrice = await getPendulumPrice();
-    const vortexPrice = await getVortexPrice();
+    await sequelize.sync();
+    const priceSources = [
+      getBinancePrice(),
+      getUniswapPrice(),
+      getPendulumPrice(),
+      getVortexPrice(),
+    ];
 
-    await db.insert(priceData).values([
-      binancePrice,
-      uniswapPrice,
-      pendulumPrice,
-      vortexPrice,
-    ].flat());
+    const results = await Promise.all(priceSources);
+    const prices = results.flat();
+
+    await PriceData.bulkCreate(prices);
 
     console.log('Prices stored successfully.');
   } catch (error) {

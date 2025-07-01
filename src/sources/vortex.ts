@@ -1,5 +1,3 @@
-import { priceData } from '../db/schema';
-
 enum DestinationType {
   Polygon = 'polygon',
   Pix = 'pix',
@@ -28,14 +26,16 @@ interface VortexRequestBody {
   inputAmount: number;
 }
 
+import type { PriceData } from '../types';
+
 interface VortexResponse {
   outputAmount: string;
 }
 
-export async function getVortexPrice(): Promise<(typeof priceData.$inferInsert)[]> {
+export async function getVortexPrice(): Promise<PriceData[]> {
   const VORTEX_API_URL = 'https://api.vortexfinance.co/v1/quotes';
   const amounts = [1000, 10000, 100000];
-  const results: (typeof priceData.$inferInsert)[] = [];
+  const results: PriceData[] = [];
 
   const pairs = [
     {
@@ -90,11 +90,11 @@ export async function getVortexPrice(): Promise<(typeof priceData.$inferInsert)[
         const rate = outputAmount / amount;
 
         results.push({
-          timestamp: new Date().toISOString(),
+          timestamp: new Date(),
           source: 'Vortex',
           currency_pair: pair.currency_pair,
-          amount: amount.toString(),
-          rate: rate.toString(),
+          amount: amount,
+          rate: rate,
         });
       } catch (error) {
         console.error(

@@ -1,7 +1,4 @@
-import { priceData } from '../db/schema';
-
-// This creates a type that matches the structure for inserting data, excluding the auto-generated 'id'
-type PriceData = typeof priceData.$inferInsert;
+import type { PriceData } from '../types';
 
 const API_URL = 'https://api.binance.com/api/v3/depth';
 const SYMBOLS_TO_FETCH = [
@@ -60,7 +57,7 @@ function calculateEffectiveRate(asks: [string, string][], targetAmount: number):
  */
 export async function getBinancePrice(): Promise<PriceData[]> {
   const allResults: PriceData[] = [];
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date();
 
   const fetchPromises = SYMBOLS_TO_FETCH.map(async ({ apiSymbol, pair }) => {
     try {
@@ -80,8 +77,8 @@ export async function getBinancePrice(): Promise<PriceData[]> {
             timestamp,
             source: 'Binance',
             currency_pair: pair,
-            amount: amount.toString(),
-            rate: rate.toString(),
+            amount: amount,
+            rate: rate,
           });
         }
       }

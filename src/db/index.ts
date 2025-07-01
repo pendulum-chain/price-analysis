@@ -1,6 +1,14 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import * as schema from './schema';
+import { Sequelize } from 'sequelize';
+import { dbConfig } from '../config';
 
-const sqlite = new Database('sqlite.db');
-export const db = drizzle(sqlite, { schema });
+const sequelize = new Sequelize({
+  dialect: 'postgres',
+  host: dbConfig.host,
+  port: dbConfig.port,
+  username: dbConfig.user,
+  password: dbConfig.password,
+  database: dbConfig.database,
+  logging: console.log,
+});
+
+export default sequelize;

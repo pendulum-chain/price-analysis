@@ -1,10 +1,48 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { DataTypes, Model } from 'sequelize';
+import sequelize from './index';
 
-export const priceData = sqliteTable('price_data', {
-  id: integer('id').primaryKey(),
-  timestamp: text('timestamp').notNull(),
-  source: text('source').notNull(),
-  currency_pair: text('currency_pair').notNull(),
-  amount: text('amount').notNull(),
-  rate: text('rate').notNull(),
-});
+class PriceData extends Model {
+  public id!: number;
+  public timestamp!: Date;
+  public source!: string;
+  public currency_pair!: string;
+  public amount!: number;
+  public rate!: number;
+}
+
+PriceData.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    timestamp: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    source: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    currency_pair: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    amount: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+    },
+    rate: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize,
+    tableName: 'price_data',
+    timestamps: false,
+  }
+);
+
+export default PriceData;

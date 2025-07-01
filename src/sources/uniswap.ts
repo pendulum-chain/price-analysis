@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { Pool } from '@uniswap/v3-sdk';
 import { Token, CurrencyAmount } from '@uniswap/sdk-core';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import { priceData } from '../db/schema';
+import type { PriceData } from '../types';
 
 // Pool address for USDC/BRLA on Polygon
 const POOL_ADDRESS = '0x0E7754127dEDd4097be750825Dbb4669bc32c956';
@@ -52,7 +52,7 @@ async function getPoolInfo(): Promise<PoolInfo> {
   };
 }
 
-export async function getUniswapPrice() {
+export async function getUniswapPrice(): Promise<PriceData[]> {
   const poolInfo = await getPoolInfo();
 
   const pool = new Pool(
@@ -65,17 +65,17 @@ export async function getUniswapPrice() {
   );
 
   const amounts = [1000, 10000, 100000];
-  const results: (typeof priceData.$inferInsert)[] = [];
+  const results: PriceData[] = [];
 
   for (const amount of amounts) {
     const amountIn = CurrencyAmount.fromRawAmount(BRLA, (amount * (10 ** BRLA.decimals)).toString());
     const price = pool.token0Price.quote(amountIn);
     results.push({
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       source: 'Uniswap',
       currency_pair: 'USDC-BRLA',
-      amount: amount.toString(),
-      rate: price.toSignificant(6),
+      amount: amount,
+      rate: parseFloat(price.toSignificant(6)),
     });
   }
 
