@@ -50,6 +50,15 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
             currency_pair: 'BRL-USDT',
         },
         {
+            // USDT-BRL: off-ramp from Polygon to Pix
+            rampType: RampType.Off,
+            from: DestinationType.Polygon,
+            to: DestinationType.Pix,
+            inputCurrency: RampCurrency.Usdt,
+            outputCurrency: RampCurrency.Brl,
+            currency_pair: 'USDT-BRL',
+        },
+        {
             // USDC-EUR: off-ramp from Polygon to Sepa
             rampType: RampType.Off,
             from: DestinationType.Polygon,

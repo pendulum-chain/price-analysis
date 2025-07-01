@@ -3,7 +3,7 @@ import {generateUUID} from "../utils/uuid.ts";
 
 const API_URL = 'https://api.binance.com/api/v3/depth';
 const SYMBOLS_TO_FETCH = [
-    {apiSymbol: 'BRLUSDT', pair: 'BRL-USDT'},
+    {apiSymbol: 'USDTBRL', pair: 'USDT-BRL'},
     {apiSymbol: 'EURUSDC', pair: 'EUR-USDC'},
 ];
 const AMOUNTS = [1000, 10000, 100000];
@@ -57,7 +57,6 @@ function calculateEffectiveRate(asks: [string, string][], targetAmount: number):
  * @returns A promise that resolves to an array of price data.
  */
 export async function getBinancePrice(): Promise<PriceDataAttributes[]> {
-    const allResults: PriceDataAttributes[] = [];
     const timestamp = new Date();
 
     const fetchPromises = SYMBOLS_TO_FETCH.map(async ({apiSymbol, pair}) => {
@@ -94,5 +93,5 @@ export async function getBinancePrice(): Promise<PriceDataAttributes[]> {
     const resultsBySymbol = await Promise.all(fetchPromises);
 
     // Flatten the array of arrays into a single array
-    return allResults.concat(...resultsBySymbol);
+    return resultsBySymbol.flat();
 }
