@@ -1,8 +1,11 @@
-import { ethers } from 'ethers';
-import { Pool } from '@uniswap/v3-sdk';
-import { Token, CurrencyAmount } from '@uniswap/sdk-core';
-import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import type { PriceDataAttributes } from '../db/schema';
+import {ethers} from 'ethers';
+import {Pool} from '@uniswap/v3-sdk';
+import {Token, CurrencyAmount} from '@uniswap/sdk-core';
+import {
+    abi as IUniswapV3PoolABI
+} from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
+import type {PriceDataAttributes} from '../db/schema';
+import {generateUUID} from "../utils/uuid.ts";
 
 // Pool address for USDC/BRLA on Polygon
 const POOL_ADDRESS = '0x0E7754127dEDd4097be750825Dbb4669bc32c956';
@@ -18,67 +21,69 @@ const USDC = new Token(137, USDC_ADDRESS, 6, 'USDC', 'USD Coin');
 const BRLA = new Token(137, BRLA_ADDRESS, 18, 'BRLA', 'BRLA Token');
 
 interface PoolInfo {
-  token0: string;
-  token1: string;
-  fee: number;
-  tickSpacing: number;
-  sqrtPriceX96: ethers.BigNumberish;
-  liquidity: ethers.BigNumberish;
-  tick: number;
+    token0: string;
+    token1: string;
+    fee: number;
+    tickSpacing: number;
+    sqrtPriceX96: ethers.BigNumberish;
+    liquidity: ethers.BigNumberish;
+    tick: number;
 }
 
 async function getPoolInfo(): Promise<PoolInfo> {
-  // Using `any` to avoid TypeScript errors with ethers.js v6 contract typings.
-  // The methods are dynamically added and TypeScript cannot infer them.
-  const poolContract: any = new ethers.Contract(POOL_ADDRESS, IUniswapV3PoolABI, provider);
+    // Using `any` to avoid TypeScript errors with ethers.js v6 contract typings.
+    // The methods are dynamically added and TypeScript cannot infer them.
+    const poolContract: any = new ethers.Contract(POOL_ADDRESS, IUniswapV3PoolABI, provider);
 
-  const [token0, token1, fee, tickSpacing, liquidity, slot0] = await Promise.all([
-    poolContract.token0(),
-    poolContract.token1(),
-    poolContract.fee(),
-    poolContract.tickSpacing(),
-    poolContract.liquidity(),
-    poolContract.slot0(),
-  ]);
+    const [token0, token1, fee, tickSpacing, liquidity, slot0] = await Promise.all([
+        poolContract.token0(),
+        poolContract.token1(),
+        poolContract.fee(),
+        poolContract.tickSpacing(),
+        poolContract.liquidity(),
+        poolContract.slot0(),
+    ]);
 
-  return {
-    token0,
-    token1,
-    fee: Number(fee),
-    tickSpacing: Number(tickSpacing),
-    liquidity,
-    sqrtPriceX96: slot0.sqrtPriceX96,
-    tick: Number(slot0.tick),
-  };
+    return {
+        token0,
+        token1,
+        fee: Number(fee),
+        tickSpacing: Number(tickSpacing),
+        liquidity,
+        sqrtPriceX96: slot0.sqrtPriceX96,
+        tick: Number(slot0.tick),
+    };
 }
 
 export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
-  const poolInfo = await getPoolInfo();
+    const poolInfo = await getPoolInfo();
 
-  const pool = new Pool(
-    USDC,
-    BRLA,
-    poolInfo.fee,
-    poolInfo.sqrtPriceX96.toString(),
-    poolInfo.liquidity.toString(),
-    poolInfo.tick
-  );
+    const pool = new Pool(
+        USDC,
+        BRLA,
+        poolInfo.fee,
+        poolInfo.sqrtPriceX96.toString(),
+        poolInfo.liquidity.toString(),
+        poolInfo.tick
+    );
 
-  const amounts = [1000, 10000, 100000];
-  const results: PriceDataAttributes[] = [];
+    const amounts = [1000, 10000, 100000];
+    const results: PriceDataAttributes[] = [];
 
-  for (const amount of amounts) {
-    const amountIn = CurrencyAmount.fromRawAmount(BRLA, (amount * (10 ** BRLA.decimals)).toString());
-    const price = pool.token0Price.quote(amountIn);
-    results.push({
-      id: 0,
-      timestamp: new Date(),
-      source: 'Uniswap',
-      currency_pair: 'USDC-BRLA',
-      amount: amount,
-      rate: parseFloat(price.toSignificant(6)),
-    });
-  }
+    for (const amount of amounts) {
+        const rawAmount = BigInt(amount) * BigInt(10 ** BRLA.decimals);
+        const amountIn = CurrencyAmount.fromRawAmount(BRLA, rawAmount.toString());
+        const price = pool.token1Price.quote(amountIn);
+        console.log("Got price", JSON.stringify(price))
+        results.push({
+            id: generateUUID(),
+            timestamp: new Date(),
+            source: 'Uniswap',
+            currency_pair: 'USDC-BRLA',
+            amount: amount,
+            rate: parseFloat(price.toSignificant(6)),
+        });
+    }
 
-  return results;
+    return results;
 }
