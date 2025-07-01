@@ -18,7 +18,7 @@ async function fetchAndStorePrices() {
       uniswapPrice,
       pendulumPrice,
       vortexPrice,
-    ]);
+    ].flat());
 
     console.log('Prices stored successfully.');
   } catch (error) {
