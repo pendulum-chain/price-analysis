@@ -4,17 +4,18 @@ import { Token, CurrencyAmount } from '@uniswap/sdk-core';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { priceData } from '../db/schema';
 
-// IMPORTANT: Replace with a valid BRLA-USDC pool address and your Infura project ID.
-const POOL_ADDRESS = '0x5555aadAF8e4D463243524442527225431717225'; // This is a placeholder, a real pool address would be needed.
-const RPC_URL = 'https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID'; // Replace with your Infura project ID or another RPC URL
+// Pool address for USDC/BRLA on Polygon
+const POOL_ADDRESS = '0x0E7754127dEDd4097be750825Dbb4669bc32c956';
+const RPC_URL = `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 
-const BRLA_ADDRESS = '0x9153643942332532aEC9224053136549f55D4291';
-const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+// Polygon token addresses
+const USDC_ADDRESS = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359';
+const BRLA_ADDRESS = '0xE6A537a407488807F0bbeb0038B79004f19DDDFb';
 
-const BRLA = new Token(1, BRLA_ADDRESS, 18, 'BRLA', 'BRLA Token');
-const USDC = new Token(1, USDC_ADDRESS, 6, 'USDC', 'USD Coin');
+const USDC = new Token(137, USDC_ADDRESS, 6, 'USDC', 'USD Coin');
+const BRLA = new Token(137, BRLA_ADDRESS, 18, 'BRLA', 'BRLA Token');
 
 interface PoolInfo {
   token0: string;
@@ -55,8 +56,8 @@ export async function getUniswapPrice() {
   const poolInfo = await getPoolInfo();
 
   const pool = new Pool(
-    BRLA,
     USDC,
+    BRLA,
     poolInfo.fee,
     poolInfo.sqrtPriceX96.toString(),
     poolInfo.liquidity.toString(),
@@ -72,7 +73,7 @@ export async function getUniswapPrice() {
     results.push({
       timestamp: new Date().toISOString(),
       source: 'Uniswap',
-      currency_pair: 'BRLA-USDC',
+      currency_pair: 'USDC-BRLA',
       amount: amount.toString(),
       rate: price.toSignificant(6),
     });
