@@ -71,18 +71,39 @@ export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
     const results: PriceDataAttributes[] = [];
 
     for (const amount of amounts) {
-        const rawAmount = BigInt(amount) * BigInt(10 ** BRLA.decimals);
-        const amountIn = CurrencyAmount.fromRawAmount(BRLA, rawAmount.toString());
-        const price = pool.token1Price.quote(amountIn);
-        console.log("Got price", JSON.stringify(price))
+        const rawAmountUsdc = BigInt(amount) * BigInt(10 ** USDC.decimals);
+        const rawAmountBrla = BigInt(amount) * BigInt(10 ** BRLA.decimals);
+
+        // Get the USDC -> BRLA price
+        const amountInUsdc = CurrencyAmount.fromRawAmount(USDC, rawAmountUsdc.toString());
+        const priceUsdc = pool.token0Price.quote(amountInUsdc);
+        const rateUsdcBrla = parseFloat(priceUsdc.divide(amount).toSignificant(10));
+        console.log("Got price For USDC", priceUsdc.toSignificant(10), "rate", rateUsdcBrla);
+
         results.push({
             id: generateUUID(),
             timestamp: new Date(),
             source: 'Uniswap',
             currency_pair: 'USDC-BRLA',
             amount: amount,
-            rate: parseFloat(price.toSignificant(6)),
+            rate: rateUsdcBrla
         });
+
+        // Get the BRLA -> USDC price
+        const amountInBrla = CurrencyAmount.fromRawAmount(BRLA, rawAmountBrla.toString());
+        const priceBrla = pool.token1Price.quote(amountInBrla);
+        const rateBrlaUsdc = parseFloat(priceBrla.divide(amount).toSignificant(10));
+        console.log("Got price for BRLA", priceBrla.toSignificant(10), "rate", rateBrlaUsdc);
+
+        results.push({
+            id: generateUUID(),
+            timestamp: new Date(),
+            source: 'Uniswap',
+            currency_pair: 'BRLA-USDC',
+            amount: amount,
+            rate: rateBrlaUsdc
+        });
+
     }
 
     return results;
