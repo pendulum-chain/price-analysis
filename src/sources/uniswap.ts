@@ -11,7 +11,8 @@ import {generateUUID} from "../utils/uuid.ts";
 
 // Pool address for USDC/BRLA on Polygon
 const POOL_ADDRESS = '0x0E7754127dEDd4097be750825Dbb4669bc32c956';
-const QUOTER_ADDRESS = '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6';
+// Correct Uniswap V3 QuoterV2 address for Polygon
+const QUOTER_ADDRESS = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e';
 const RPC_URL = `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -30,28 +31,32 @@ export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
     const poolContract = new ethers.Contract(POOL_ADDRESS, poolInterface, provider);
     const quoterContract = new ethers.Contract(QUOTER_ADDRESS, quoterInterface, provider);
 
-    const feeResult = await poolContract.getFunction("fee").staticCall();
-    const fee = feeResult[0];
+    // Get pool fee
+    const fee = await poolContract.getFunction("fee").staticCall();
 
     const amounts = [1000, 10000, 100000];
     const results: PriceDataAttributes[] = [];
 
-    // This is the signature for the overloaded function that takes a struct (tuple)
+    // Get the quoteExactInputSingle function that takes a struct parameter
     const quoteFunction = quoterContract.getFunction("quoteExactInputSingle((address,address,uint256,uint24,uint160))");
 
     for (const amount of amounts) {
         // Get the USDC -> BRLA price
         const rawAmountUsdc = ethers.parseUnits(amount.toString(), USDC.decimals);
-        const usdcToBrlaParams = [USDC.address, BRLA.address, rawAmountUsdc, fee, 0];
-        console.log("usdcToBrlaParams", usdcToBrlaParams);
+        const usdcToBrlaParams = {
+            tokenIn: USDC.address,
+            tokenOut: BRLA.address,
+            amountIn: rawAmountUsdc,
+            fee: fee,
+            sqrtPriceLimitX96: 0n
+        };
+        
         try {
-
             const quotedAmountOutBrlaResult = await quoteFunction.staticCall(usdcToBrlaParams);
-            console.log("quotedAmountOutBrlaResult", quotedAmountOutBrlaResult);
             const quotedAmountOutBrla = quotedAmountOutBrlaResult[0];
+            const quotedAmountOutBrlaFormatted = ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals);
 
-            const rateUsdcBrla = parseFloat(ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals)) / amount;
-            console.log(`Got quote for ${amount} USDC -> BRLA:`, ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals), "rate", rateUsdcBrla);
+            const rateUsdcBrla = parseFloat(quotedAmountOutBrlaFormatted) / amount;
 
             results.push({
                 id: generateUUID(),
@@ -67,14 +72,20 @@ export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
 
         // Get the BRLA -> USDC price
         const rawAmountBrla = ethers.parseUnits(amount.toString(), BRLA.decimals);
-        const brlaToUsdcParams = [BRLA.address, USDC.address, rawAmountBrla, fee, 0];
-        console.log("brlaToUsdcParams", brlaToUsdcParams);
+        const brlaToUsdcParams = {
+            tokenIn: BRLA.address,
+            tokenOut: USDC.address,
+            amountIn: rawAmountBrla,
+            fee: fee,
+            sqrtPriceLimitX96: 0n
+        };
+        
         try {
             const quotedAmountOutUsdcResult = await quoteFunction.staticCall(brlaToUsdcParams);
             const quotedAmountOutUsdc = quotedAmountOutUsdcResult[0];
+            const quotedAmountOutUsdcFormatted = ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals);
 
-            const rateBrlaUsdc = parseFloat(ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals)) / amount;
-            console.log(`Got quote for ${amount} BRLA -> USDC:`, ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals), "rate", rateBrlaUsdc);
+            const rateBrlaUsdc = parseFloat(quotedAmountOutUsdcFormatted) / amount;
 
             results.push({
                 id: generateUUID(),
