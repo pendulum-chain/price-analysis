@@ -4,6 +4,7 @@ import {getBinancePrice} from './sources/binance';
 import {getUniswapPrice} from './sources/uniswap';
 import {getPendulumPrice} from './sources/pendulum';
 import {getVortexPrice} from './sources/vortex';
+import {getTwelveDataPrice} from './sources/twelvedata';
 import {generateUUID} from "./utils/uuid.ts";
 
 async function fetchAndStorePrices() {
@@ -16,6 +17,7 @@ async function fetchAndStorePrices() {
             getUniswapPrice(),
             getPendulumPrice(),
             getVortexPrice(),
+            getTwelveDataPrice(),
         ];
 
         const results = await Promise.all(priceSources);
@@ -34,8 +36,8 @@ async function fetchAndStorePrices() {
     }
 }
 
-// Run every 30 minutes (1800000 milliseconds)
-setInterval(fetchAndStorePrices, 1800000);
+// Run every minute
+setInterval(fetchAndStorePrices, 60 * 1000);
 
 // Run once on startup
 fetchAndStorePrices();
