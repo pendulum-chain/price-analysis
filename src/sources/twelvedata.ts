@@ -5,9 +5,7 @@ const API_URL = 'https://api.twelvedata.com/time_series';
 const API_KEY = process.env.TWELVEDATA_API_KEY;
 const SYMBOLS_TO_FETCH = [
     {apiSymbol: 'EUR/USD', pair: 'EUR-USD'},
-    {apiSymbol: 'USD/BRL', pair: 'USD-BRL'},
-    {apiSymbol: 'GBP/USD', pair: 'GBP-USD'},
-    {apiSymbol: 'USD/JPY', pair: 'USD-JPY'},
+    {apiSymbol: 'BRL/USD', pair: 'BRL-USD'},
 ];
 const AMOUNTS = [1000, 10000, 100000];
 
