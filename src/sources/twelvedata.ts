@@ -1,5 +1,6 @@
 import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from "../utils/uuid.ts";
+import {AMOUNTS} from "../index.ts";
 
 const API_URL = 'https://api.twelvedata.com/time_series';
 const API_KEY = process.env.TWELVEDATA_API_KEY;
@@ -7,7 +8,6 @@ const SYMBOLS_TO_FETCH = [
     {apiSymbol: 'EUR/USD', pair: 'EUR-USD'},
     {apiSymbol: 'BRL/USD', pair: 'BRL-USD'},
 ];
-const AMOUNTS = [1000, 10000, 100000];
 
 interface TwelveDataResponse {
     meta: {

@@ -7,6 +7,9 @@ import {getVortexPrice} from './sources/vortex';
 import {getTwelveDataPrice} from './sources/twelvedata';
 import {generateUUID} from "./utils/uuid.ts";
 
+// The amounts to fetch prices for
+export const AMOUNTS = [1000, 10000, 50000, 100000];
+
 async function fetchAndStorePrices() {
     console.log('Fetching and storing prices...');
     try {

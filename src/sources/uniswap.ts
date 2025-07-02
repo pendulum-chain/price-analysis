@@ -8,6 +8,7 @@ import {
 } from '@uniswap/v3-periphery/artifacts/contracts/interfaces/IQuoterV2.sol/IQuoterV2.json';
 import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from "../utils/uuid.ts";
+import {AMOUNTS} from "../index.ts";
 
 // Pool address for USDC/BRLA on Polygon
 const POOL_ADDRESS = '0x0E7754127dEDd4097be750825Dbb4669bc32c956';
@@ -34,13 +35,12 @@ export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
     // Get pool fee
     const fee = await poolContract.getFunction("fee").staticCall();
 
-    const amounts = [1000, 10000, 100000];
     const results: PriceDataAttributes[] = [];
 
     // Get the quoteExactInputSingle function that takes a struct parameter
     const quoteFunction = quoterContract.getFunction("quoteExactInputSingle((address,address,uint256,uint24,uint160))");
 
-    for (const amount of amounts) {
+    for (const amount of AMOUNTS) {
         // Get the USDC -> BRLA price
         const rawAmountUsdc = ethers.parseUnits(amount.toString(), USDC.decimals);
         const usdcToBrlaParams = {

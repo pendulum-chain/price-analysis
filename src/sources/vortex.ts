@@ -1,5 +1,6 @@
 import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from "../utils/uuid.ts";
+import {AMOUNTS} from "../index.ts";
 
 enum DestinationType {
     Polygon = 'polygon',
@@ -36,7 +37,6 @@ interface VortexResponse {
 
 export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
     const VORTEX_API_URL = 'https://api.vortexfinance.co/v1/quotes';
-    const amounts = [1000, 10000, 100000];
     const results: PriceDataAttributes[] = [];
 
     const pairs = [
@@ -88,7 +88,7 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
     ];
 
     for (const pair of pairs) {
-        for (const amount of amounts) {
+        for (const amount of AMOUNTS) {
             const requestBody: VortexRequestBody = {
                 rampType: pair.rampType,
                 from: pair.from,

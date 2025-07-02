@@ -1,12 +1,12 @@
 import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from "../utils/uuid.ts";
+import {AMOUNTS} from "../index.ts";
 
 const API_URL = 'https://api.binance.com/api/v3/depth';
 const SYMBOLS_TO_FETCH = [
     {apiSymbol: 'USDTBRL', pair: 'USDT-BRL'},
     {apiSymbol: 'EURUSDC', pair: 'EUR-USDC'},
 ];
-const AMOUNTS = [1000, 10000, 100000];
 
 interface OrderBook {
     lastUpdateId: number;

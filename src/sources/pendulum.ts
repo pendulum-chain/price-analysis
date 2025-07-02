@@ -1,6 +1,7 @@
 import type {PriceDataAttributes} from '../db/schema';
 import ApiManager from '../utils/api-manager';
 import {generateUUID} from "../utils/uuid.ts";
+import {AMOUNTS} from "../index.ts";
 
 export async function getPendulumPrice(): Promise<PriceDataAttributes[]> {
     const api = await ApiManager.getApi('pendulum');
@@ -19,7 +20,7 @@ export async function getPendulumPrice(): Promise<PriceDataAttributes[]> {
             const price = parsedCoinInfo.price.replaceAll(",", "") / 10 ** decimals;
             const timestamp = new Date(parsedCoinInfo.lastUpdateTimestamp.replaceAll(",", "") * 1000);
 
-            for (const amount of [1000, 10000, 100000]) {
+            for (const amount of AMOUNTS) {
                 prices.push({
                     id: generateUUID(),
                     timestamp,
