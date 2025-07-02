@@ -43,38 +43,50 @@ export async function getUniswapPrice(): Promise<PriceDataAttributes[]> {
         // Get the USDC -> BRLA price
         const rawAmountUsdc = ethers.parseUnits(amount.toString(), USDC.decimals);
         const usdcToBrlaParams = [USDC.address, BRLA.address, rawAmountUsdc, fee, 0];
-        const quotedAmountOutBrlaResult = await quoteFunction.staticCall(usdcToBrlaParams);
-        const quotedAmountOutBrla = quotedAmountOutBrlaResult[0];
+        console.log("usdcToBrlaParams", usdcToBrlaParams);
+        try {
 
-        const rateUsdcBrla = parseFloat(ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals)) / amount;
-        console.log(`Got quote for ${amount} USDC -> BRLA:`, ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals), "rate", rateUsdcBrla);
+            const quotedAmountOutBrlaResult = await quoteFunction.staticCall(usdcToBrlaParams);
+            console.log("quotedAmountOutBrlaResult", quotedAmountOutBrlaResult);
+            const quotedAmountOutBrla = quotedAmountOutBrlaResult[0];
 
-        results.push({
-            id: generateUUID(),
-            timestamp: new Date(),
-            source: 'Uniswap',
-            currency_pair: 'USDC-BRLA',
-            amount: amount,
-            rate: rateUsdcBrla
-        });
+            const rateUsdcBrla = parseFloat(ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals)) / amount;
+            console.log(`Got quote for ${amount} USDC -> BRLA:`, ethers.formatUnits(quotedAmountOutBrla, BRLA.decimals), "rate", rateUsdcBrla);
+
+            results.push({
+                id: generateUUID(),
+                timestamp: new Date(),
+                source: 'Uniswap',
+                currency_pair: 'USDC-BRLA',
+                amount: amount,
+                rate: rateUsdcBrla
+            });
+        } catch (error) {
+            console.error(`Error fetching USDC -> BRLA quote for amount ${amount}:`, error);
+        }
 
         // Get the BRLA -> USDC price
         const rawAmountBrla = ethers.parseUnits(amount.toString(), BRLA.decimals);
         const brlaToUsdcParams = [BRLA.address, USDC.address, rawAmountBrla, fee, 0];
-        const quotedAmountOutUsdcResult = await quoteFunction.staticCall(brlaToUsdcParams);
-        const quotedAmountOutUsdc = quotedAmountOutUsdcResult[0];
+        console.log("brlaToUsdcParams", brlaToUsdcParams);
+        try {
+            const quotedAmountOutUsdcResult = await quoteFunction.staticCall(brlaToUsdcParams);
+            const quotedAmountOutUsdc = quotedAmountOutUsdcResult[0];
 
-        const rateBrlaUsdc = parseFloat(ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals)) / amount;
-        console.log(`Got quote for ${amount} BRLA -> USDC:`, ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals), "rate", rateBrlaUsdc);
+            const rateBrlaUsdc = parseFloat(ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals)) / amount;
+            console.log(`Got quote for ${amount} BRLA -> USDC:`, ethers.formatUnits(quotedAmountOutUsdc, USDC.decimals), "rate", rateBrlaUsdc);
 
-        results.push({
-            id: generateUUID(),
-            timestamp: new Date(),
-            source: 'Uniswap',
-            currency_pair: 'BRLA-USDC',
-            amount: amount,
-            rate: rateBrlaUsdc
-        });
+            results.push({
+                id: generateUUID(),
+                timestamp: new Date(),
+                source: 'Uniswap',
+                currency_pair: 'BRLA-USDC',
+                amount: amount,
+                rate: rateBrlaUsdc
+            });
+        } catch (error) {
+            console.error(`Error fetching BRLA -> USDC quote for amount ${amount}:`, error);
+        }
     }
 
     return results;
