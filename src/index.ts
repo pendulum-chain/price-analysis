@@ -36,8 +36,5 @@ async function fetchAndStorePrices() {
     }
 }
 
-// Run every minute
-setInterval(fetchAndStorePrices, 60 * 1000);
-
 // Run once on startup
 fetchAndStorePrices();
