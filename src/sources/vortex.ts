@@ -17,8 +17,8 @@ enum RampCurrency {
 }
 
 enum RampType {
-    On = 'on',
-    Off = 'off',
+    On = 'BUY',
+    Off = 'SELL',
 }
 
 interface VortexRequestBody {
