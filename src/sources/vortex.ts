@@ -9,11 +9,11 @@ enum DestinationType {
 }
 
 enum RampCurrency {
-    Usdc = 'usdc',
-    Usdt = 'usdt',
-    Eurc = 'eurc',
-    Eur = 'eur',
-    Brl = 'brl',
+    Usdc = 'USDC',
+    Usdt = 'USDT',
+    Eurc = 'EURC',
+    Eur = 'EUR',
+    Brl = 'BRL',
 }
 
 enum RampType {
