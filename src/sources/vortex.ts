@@ -114,7 +114,6 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
                     console.error(
                         `Vortex API request failed for ${pair.currency_pair} with amount ${amount}: ${response.statusText}`
                     );
-                    console.error("Request body:", requestBody);
                     continue;
                 }
 
