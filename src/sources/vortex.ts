@@ -22,12 +22,13 @@ enum RampType {
 }
 
 interface VortexRequestBody {
-    rampType: RampType;
     from: DestinationType;
-    to: DestinationType;
-    inputCurrency: RampCurrency;
-    outputCurrency: RampCurrency;
     inputAmount: number;
+    inputCurrency: RampCurrency;
+    network?: string;
+    outputCurrency: RampCurrency;
+    rampType: RampType;
+    to: DestinationType;
 }
 
 
@@ -56,6 +57,7 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
             to: DestinationType.Polygon,
             inputCurrency: RampCurrency.Brl,
             outputCurrency: RampCurrency.Usdc,
+            network: "polygon",
             currency_pair: 'BRL-USDC',
         },
         {
@@ -93,6 +95,7 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
                 rampType: pair.rampType,
                 from: pair.from,
                 to: pair.to,
+                network: pair.network,
                 inputCurrency: pair.inputCurrency,
                 outputCurrency: pair.outputCurrency,
                 inputAmount: amount,
@@ -111,6 +114,7 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
                     console.error(
                         `Vortex API request failed for ${pair.currency_pair} with amount ${amount}: ${response.statusText}`
                     );
+                    console.error("Request body:", requestBody);
                     continue;
                 }
 
