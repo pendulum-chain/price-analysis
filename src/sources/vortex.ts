@@ -29,6 +29,7 @@ interface VortexRequestBody {
     outputCurrency: RampCurrency;
     rampType: RampType;
     to: DestinationType;
+    partnerId?: string;
 }
 
 
@@ -99,6 +100,7 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
                 inputCurrency: pair.inputCurrency,
                 outputCurrency: pair.outputCurrency,
                 inputAmount: amount,
+                partnerId: "PriceAnalysis"
             };
 
             try {
