@@ -5,6 +5,8 @@ import {getUniswapPrice} from './sources/uniswap';
 import {getPendulumPrice} from './sources/pendulum';
 import {getVortexPrice} from './sources/vortex';
 import {getTwelveDataPrice} from './sources/twelvedata';
+import {getPythPrice} from './sources/pyth';
+import {getCoinbasePrice} from './sources/coinbase';
 import {generateUUID} from "./utils/uuid.ts";
 
 // The amounts to fetch prices for
@@ -21,6 +23,8 @@ async function fetchAndStorePrices() {
             getPendulumPrice(),
             getVortexPrice(),
             getTwelveDataPrice(),
+            getPythPrice(),
+            getCoinbasePrice(),
         ];
 
         const results = await Promise.all(priceSources);
