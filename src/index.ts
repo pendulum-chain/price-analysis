@@ -24,7 +24,7 @@ async function fetchAndStorePrices() {
             getVortexPrice(),
             getTwelveDataPrice(),
             getPythPrice(),
-            getCoinbasePrice(),
+            //getCoinbasePrice(),
         ];
 
         const results = await Promise.all(priceSources);
