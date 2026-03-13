@@ -45,11 +45,11 @@ async function fetchAndStorePrices() {
     process.exit(0);
 }
 
-// Set a timeout to ensure the process exits after 1 minute regardless
+// Set a timeout to ensure the process exits after 2 minutes regardless
 setTimeout(() => {
     console.log('Timeout reached, forcing exit...');
     process.exit(1);
-}, 60 * 1000);
+}, 120 * 1000);
 
 // Run once on startup
 fetchAndStorePrices();
