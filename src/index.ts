@@ -18,13 +18,13 @@ async function fetchAndStorePrices() {
         await sequelize.sync();
         const timestamp = new Date();
         const priceSources = [
-            getBinancePrice(),
-            getUniswapPrice(),
-            getPendulumPrice(),
-            getVortexPrice(),
-            getTwelveDataPrice(),
+            //getBinancePrice(),
+            //getUniswapPrice(),
+            //getPendulumPrice(),
+            //getVortexPrice(),
+            //getTwelveDataPrice(),
             getPythPrice(),
-            //getCoinbasePrice(),
+            getCoinbasePrice(),
         ];
 
         const results = await Promise.all(priceSources);
