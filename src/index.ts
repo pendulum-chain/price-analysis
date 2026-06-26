@@ -1,9 +1,12 @@
 import sequelize from './db';
-import { trimOldPriceData } from './db/retention';
+import {trimOldPriceData} from './db/retention';
 import PriceData from './db/schema';
-import { getCoinbasePrice } from './sources/coinbase';
-import { getPythPrice } from './sources/pyth';
-import { generateUUID } from './utils/uuid.ts';
+import {getCoinbasePrice} from './sources/coinbase';
+import {getPythPrice} from './sources/pyth';
+import {generateUUID} from './utils/uuid.ts';
+import {getUniswapPrice} from "./sources/uniswap.ts";
+import {getVortexPrice} from "./sources/vortex.ts";
+import {getBinancePrice} from "./sources/binance.ts";
 
 // The amounts to fetch prices for
 export const AMOUNTS = [1000, 10000, 50000, 100000];
@@ -14,10 +17,10 @@ async function fetchAndStorePrices() {
         await sequelize.sync();
         const timestamp = new Date();
         const priceSources = [
-            //getBinancePrice(),
-            //getUniswapPrice(),
+            getBinancePrice(),
+            getUniswapPrice(),
             //getPendulumPrice(),
-            //getVortexPrice(),
+            getVortexPrice(),
             //getTwelveDataPrice(),
             getPythPrice(),
             getCoinbasePrice(),
