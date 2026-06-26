@@ -50,6 +50,12 @@ PriceData.init(
         sequelize,
         tableName: 'price_data',
         timestamps: false,
+        indexes: [
+            {
+                name: 'price_data_timestamp_idx',
+                fields: ['timestamp'],
+            },
+        ],
     }
 );
 

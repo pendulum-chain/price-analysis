@@ -1,13 +1,9 @@
 import sequelize from './db';
+import { trimOldPriceData } from './db/retention';
 import PriceData from './db/schema';
-import {getBinancePrice} from './sources/binance';
-import {getUniswapPrice} from './sources/uniswap';
-import {getPendulumPrice} from './sources/pendulum';
-import {getVortexPrice} from './sources/vortex';
-import {getTwelveDataPrice} from './sources/twelvedata';
-import {getPythPrice} from './sources/pyth';
-import {getCoinbasePrice} from './sources/coinbase';
-import {generateUUID} from "./utils/uuid.ts";
+import { getCoinbasePrice } from './sources/coinbase';
+import { getPythPrice } from './sources/pyth';
+import { generateUUID } from './utils/uuid.ts';
 
 // The amounts to fetch prices for
 export const AMOUNTS = [1000, 10000, 50000, 100000];
@@ -36,6 +32,8 @@ async function fetchAndStorePrices() {
         });
 
         await PriceData.bulkCreate(prices);
+
+        await trimOldPriceData();
 
         console.log('Prices stored successfully.');
     } catch (error) {
