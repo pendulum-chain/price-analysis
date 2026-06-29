@@ -1,6 +1,7 @@
 import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from "../utils/uuid.ts";
 import {AMOUNTS} from "../index.ts";
+import {buildVortexAuth} from "./vortex-auth.ts";
 
 enum DestinationType {
     Polygon = 'polygon',
@@ -30,6 +31,7 @@ interface VortexRequestBody {
     rampType: RampType;
     to: DestinationType;
     partnerId?: string;
+    apiKey?: string;
 }
 
 
@@ -40,6 +42,10 @@ interface VortexResponse {
 export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
     const VORTEX_API_URL = 'https://api.vortexfinance.co/v1/quotes';
     const results: PriceDataAttributes[] = [];
+    const auth = buildVortexAuth({
+        publicKey: process.env.VORTEX_API_PUBLIC_KEY,
+        secretKey: process.env.VORTEX_API_SECRET_KEY,
+    });
 
     const pairs = [
         {
@@ -100,7 +106,8 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
                 inputCurrency: pair.inputCurrency,
                 outputCurrency: pair.outputCurrency,
                 inputAmount: amount,
-                partnerId: "PriceAnalysis"
+                partnerId: "PriceAnalysis",
+                ...auth.bodyFields,
             };
 
             try {
@@ -108,6 +115,7 @@ export async function getVortexPrice(): Promise<PriceDataAttributes[]> {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...auth.headers,
                     },
                     body: JSON.stringify(requestBody),
                 });

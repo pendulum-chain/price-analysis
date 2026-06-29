@@ -12,6 +12,8 @@ Then, open the `.env` file and add your Alchemy API key and PostgreSQL database 
 
 ```
 ALCHEMY_API_KEY=your_alchemy_api_key
+VORTEX_API_PUBLIC_KEY=your_vortex_public_key
+VORTEX_API_SECRET_KEY=your_vortex_secret_key
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=user
