@@ -7,7 +7,7 @@ const API_URL = 'https://api.fastforex.io/fetch-one';
 interface FastForexResponse {
     base: string;
     result: Record<string, number>;
-    updated: string;
+    updated?: string;
 }
 
 export async function getFastForexPrice(): Promise<PriceDataAttributes[]> {

@@ -2,6 +2,7 @@ import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from './uuid.ts';
 
 const Q192 = 2n ** 192n;
+const PRICE_DECIMAL_PRECISION = 10n ** 12n;
 
 export function sqrtPriceX96ToToken1PerToken0(
     sqrtPriceX96: bigint,
@@ -12,8 +13,15 @@ export function sqrtPriceX96ToToken1PerToken0(
     const numerator = sqrtPriceX96 * sqrtPriceX96 * 10n ** BigInt(decimals0) * scale;
     const denominator = Q192 * 10n ** BigInt(decimals1);
     const scaledPrice = numerator / denominator;
+    const integerPart = scaledPrice / scale;
+    const fractionalPart = scaledPrice % scale;
+    const fractionalPartAtPrecision = (fractionalPart * PRICE_DECIMAL_PRECISION) / scale;
 
-    return Number(scaledPrice) / Number(scale);
+    if (integerPart > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new RangeError(`Price integer part exceeds Number.MAX_SAFE_INTEGER: ${integerPart}`);
+    }
+
+    return Number(integerPart) + Number(fractionalPartAtPrecision) / Number(PRICE_DECIMAL_PRECISION);
 }
 
 export function buildSpotRows(params: {

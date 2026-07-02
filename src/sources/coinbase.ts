@@ -27,7 +27,7 @@ interface CoinbaseExchangeTickerResponse {
     bid: string;
     ask: string;
     volume: string;
-    time: string;
+    time?: string;
 }
 
 async function getCoinbaseExchangeTickerPrice(pair: string, timestamp: Date): Promise<PriceDataAttributes[]> {

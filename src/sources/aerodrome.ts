@@ -19,7 +19,6 @@ const POOL_ABI = [
     'function token0() view returns (address)',
     'function token1() view returns (address)',
     'function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, bool unlocked)',
-    'function liquidity() view returns (uint128)',
 ];
 
 interface SlipstreamSlot0Result extends Array<unknown> {
@@ -39,7 +38,6 @@ export async function getAerodromePrice(): Promise<PriceDataAttributes[]> {
             poolContract.getFunction('token0').staticCall() as Promise<string>,
             poolContract.getFunction('token1').staticCall() as Promise<string>,
             poolContract.getFunction('slot0').staticCall() as Promise<SlipstreamSlot0Result>,
-            poolContract.getFunction('liquidity').staticCall(),
         ]);
 
         const token0 = token0Raw.toLowerCase();
