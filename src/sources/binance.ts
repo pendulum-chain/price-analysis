@@ -1,17 +1,105 @@
 import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from "../utils/uuid.ts";
 import {AMOUNTS} from "../index.ts";
+import {buildSpotRows} from '../utils/price-math.ts';
 
-const API_URL = 'https://api.binance.com/api/v3/depth';
+const DEPTH_API_URL = 'https://api.binance.com/api/v3/depth';
+const EXCHANGE_INFO_API_URL = 'https://api.binance.com/api/v3/exchangeInfo';
+const BOOK_TICKER_API_URL = 'https://api.binance.com/api/v3/ticker/bookTicker';
 const SYMBOLS_TO_FETCH = [
-    {apiSymbol: 'USDTBRL', pair: 'USDT-BRL'},
     {apiSymbol: 'EURUSDC', pair: 'EUR-USDC'},
+];
+
+const BRL_REFERENCE_SYMBOLS = [
+    {apiSymbol: 'USDCBRL', pair: 'USDC-BRL'},
+    {apiSymbol: 'USDTBRL', pair: 'USDT-BRL'},
 ];
 
 interface OrderBook {
     lastUpdateId: number;
     bids: [string, string][];
     asks: [string, string][];
+}
+
+interface BinanceExchangeInfoResponse {
+    symbols: Array<{
+        status: string;
+        isSpotTradingAllowed: boolean;
+    }>;
+}
+
+interface BinanceBookTickerResponse {
+    symbol: string;
+    bidPrice: string;
+    bidQty: string;
+    askPrice: string;
+    askQty: string;
+}
+
+async function isTradableSpotSymbol(apiSymbol: string): Promise<boolean> {
+    const url = new URL(EXCHANGE_INFO_API_URL);
+    url.searchParams.set('symbol', apiSymbol);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+        return false;
+    }
+
+    const data = (await response.json()) as BinanceExchangeInfoResponse;
+    const symbol = data.symbols[0];
+
+    return symbol?.status === 'TRADING' && symbol.isSpotTradingAllowed;
+}
+
+async function fetchBookTickerMidpoint(apiSymbol: string): Promise<number | undefined> {
+    const url = new URL(BOOK_TICKER_API_URL);
+    url.searchParams.set('symbol', apiSymbol);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to fetch Binance book ticker for ${apiSymbol}: ${response.status} ${response.statusText} - ${errorText}`);
+        return undefined;
+    }
+
+    const data = (await response.json()) as BinanceBookTickerResponse;
+    const bid = parseFloat(data.bidPrice);
+    const ask = parseFloat(data.askPrice);
+
+    if (!Number.isFinite(bid) || !Number.isFinite(ask) || bid <= 0 || ask <= 0) {
+        console.error(`Invalid Binance book ticker for ${apiSymbol}: bid=${data.bidPrice}, ask=${data.askPrice}`);
+        return undefined;
+    }
+
+    return (bid + ask) / 2;
+}
+
+async function getBinanceBrlReferencePrice(timestamp: Date): Promise<PriceDataAttributes[]> {
+    for (const {apiSymbol, pair} of BRL_REFERENCE_SYMBOLS) {
+        try {
+            if (!await isTradableSpotSymbol(apiSymbol)) {
+                console.warn(`Binance symbol ${apiSymbol} is not available for spot trading. Trying fallback if configured.`);
+                continue;
+            }
+
+            const rate = await fetchBookTickerMidpoint(apiSymbol);
+            if (rate === undefined) {
+                continue;
+            }
+
+            return buildSpotRows({
+                amounts: AMOUNTS,
+                currencyPair: pair,
+                rate,
+                source: 'Binance',
+                timestamp,
+            });
+        } catch (error) {
+            console.error(`Error fetching Binance BRL reference for ${apiSymbol}:`, error);
+        }
+    }
+
+    return [];
 }
 
 /**
@@ -61,7 +149,7 @@ export async function getBinancePrice(): Promise<PriceDataAttributes[]> {
 
     const fetchPromises = SYMBOLS_TO_FETCH.map(async ({apiSymbol, pair}) => {
         try {
-            const response = await fetch(`${API_URL}?symbol=${apiSymbol}&limit=1000`);
+            const response = await fetch(`${DEPTH_API_URL}?symbol=${apiSymbol}&limit=1000`);
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(`Failed to fetch data for ${apiSymbol}: ${response.status} ${response.statusText} - ${errorText}`);
@@ -90,7 +178,10 @@ export async function getBinancePrice(): Promise<PriceDataAttributes[]> {
         }
     });
 
-    const resultsBySymbol = await Promise.all(fetchPromises);
+    const resultsBySymbol = await Promise.all([
+        getBinanceBrlReferencePrice(timestamp),
+        ...fetchPromises,
+    ]);
 
     // Flatten the array of arrays into a single array
     return resultsBySymbol.flat();
