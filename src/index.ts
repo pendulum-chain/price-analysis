@@ -9,6 +9,7 @@ import {getVortexPrice} from "./sources/vortex.ts";
 import {getBinancePrice} from "./sources/binance.ts";
 import {getFastForexPrice} from './sources/fastforex.ts';
 import {getAerodromePrice} from './sources/aerodrome.ts';
+import {getCirclePrice} from './sources/circle.ts';
 
 // The amounts to fetch prices for
 export const AMOUNTS = [1000, 10000, 50000, 100000];
@@ -28,6 +29,7 @@ async function fetchAndStorePrices() {
             //getTwelveDataPrice(),
             getPythPrice(),
             getCoinbasePrice(),
+            getCirclePrice(),
         ];
 
         const results = await Promise.all(priceSources);

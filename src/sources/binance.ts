@@ -10,8 +10,9 @@ const SYMBOLS_TO_FETCH = [
     {apiSymbol: 'EURUSDC', pair: 'EUR-USDC'},
 ];
 
+// USDT/BRL is Binance's core OTC reference for the Brazilian real; we focus on
+// it rather than USDC/BRL. Kept as a list so additional fallbacks can be added.
 const BRL_REFERENCE_SYMBOLS = [
-    {apiSymbol: 'USDCBRL', pair: 'USDC-BRL'},
     {apiSymbol: 'USDTBRL', pair: 'USDT-BRL'},
 ];
 
