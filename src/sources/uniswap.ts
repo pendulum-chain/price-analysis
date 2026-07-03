@@ -9,6 +9,7 @@ import {
 import type {PriceDataAttributes} from '../db/schema';
 import {generateUUID} from "../utils/uuid.ts";
 import {AMOUNTS} from "../index.ts";
+import {sqrtPriceX96ToToken1PerToken0} from '../utils/price-math.ts';
 
 // Correct Uniswap V3 QuoterV2 address for Polygon
 const QUOTER_ADDRESS = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e';
@@ -17,23 +18,25 @@ const RPC_URL = `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 
 // Polygon token addresses
-const USDT_ADDRESS = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
 const USDC_ADDRESS = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // native USDC
 const BRLA_ADDRESS = '0xE6A537a407488807F0bbeb0038B79004f19DDDFb';
 
-const USDT = new Token(137, USDT_ADDRESS, 6, 'USDT', 'Tether USD');
 const USDC = new Token(137, USDC_ADDRESS, 6, 'USDC', 'USD Coin');
 const BRLA = new Token(137, BRLA_ADDRESS, 18, 'BRLA', 'BRLA Token');
 
-// BRLA pools on Polygon (Uniswap V3) that currently hold liquidity. Each pool is
-// paired against a different quote token / fee tier; empty pools are omitted.
-// A pool is identified in the data by its fee tier (source) plus quote token
-// (currency_pair), e.g. source "Uniswap 0.05%" + pair "BRLA-USDT".
+// BRLA pools on Polygon (Uniswap V3) with enough depth to quote against.
+// The BRLA/USDT pools (0x26970f28... at 0.05% and 0xb038a99f... at 0.30%) hold
+// only a few hundred dollars of depth: quoting even 1000 USDT drains them and
+// the quoter returns a partial fill, producing nonsense rates. They are
+// therefore excluded; USDT/BRL coverage comes from Binance instead.
 const POOLS: {address: string; quote: Token}[] = [
-    {address: '0x26970f28fd257c11b937625251ebc804c6a59264', quote: USDT}, // BRLA/USDT 0.05% (deepest)
-    {address: '0xb038a99f0007173557883f6c660ece09c531def5', quote: USDT}, // BRLA/USDT 0.30%
     {address: '0x0E7754127dEDd4097be750825Dbb4669bc32c956', quote: USDC}, // BRLA/USDC 0.05%
 ];
+
+// If the effective rate falls below this fraction of the pool's mid price, the
+// quote drained the pool's liquidity (Uniswap V3 fills partially instead of
+// reverting) and the result is meaningless — skip it.
+const MIN_RATE_TO_MID_RATIO = 0.5;
 
 // Turn a Uniswap fee (in hundredths of a bip, e.g. 500) into a readable label
 // used to distinguish fee tiers in the `source` column, e.g. "Uniswap 0.05%".
@@ -49,9 +52,22 @@ async function getPoolPrices(poolAddress: string, quote: Token): Promise<PriceDa
     const poolContract = new ethers.Contract(poolAddress, poolInterface, provider);
     const quoterContract = new ethers.Contract(QUOTER_ADDRESS, quoterInterface, provider);
 
-    // Get pool fee
-    const fee = await poolContract.getFunction("fee").staticCall();
+    const [fee, token0Raw, slot0] = await Promise.all([
+        poolContract.getFunction("fee").staticCall(),
+        poolContract.getFunction("token0").staticCall() as Promise<string>,
+        poolContract.getFunction("slot0").staticCall(),
+    ]);
     const source = sourceLabel(fee);
+
+    // Mid price from slot0, used as a sanity bound for the quoter results.
+    const quoteIsToken0 = token0Raw.toLowerCase() === quote.address.toLowerCase();
+    const token1PerToken0 = sqrtPriceX96ToToken1PerToken0(
+        slot0[0],
+        quoteIsToken0 ? quote.decimals : BRLA.decimals,
+        quoteIsToken0 ? BRLA.decimals : quote.decimals,
+    );
+    const midQuoteToBrla = quoteIsToken0 ? token1PerToken0 : 1 / token1PerToken0;
+    const midBrlaToQuote = 1 / midQuoteToBrla;
 
     const results: PriceDataAttributes[] = [];
 
@@ -76,14 +92,21 @@ async function getPoolPrices(poolAddress: string, quote: Token): Promise<PriceDa
 
             const rateQuoteBrla = parseFloat(quotedAmountOutBrlaFormatted) / amount;
 
-            results.push({
-                id: generateUUID(),
-                timestamp: new Date(),
-                source: source,
-                currency_pair: `${quote.symbol}-BRLA`,
-                amount: amount,
-                rate: rateQuoteBrla
-            });
+            if (rateQuoteBrla < midQuoteToBrla * MIN_RATE_TO_MID_RATIO) {
+                console.warn(
+                    `Skipping ${quote.symbol} -> BRLA quote on ${source} for amount ${amount}: ` +
+                    `rate ${rateQuoteBrla} is far below pool mid ${midQuoteToBrla} (partial fill / insufficient liquidity)`,
+                );
+            } else {
+                results.push({
+                    id: generateUUID(),
+                    timestamp: new Date(),
+                    source: source,
+                    currency_pair: `${quote.symbol}-BRLA`,
+                    amount: amount,
+                    rate: rateQuoteBrla
+                });
+            }
         } catch (error) {
             console.error(`Error fetching ${quote.symbol} -> BRLA quote on ${source} for amount ${amount}:`, error);
         }
@@ -105,14 +128,21 @@ async function getPoolPrices(poolAddress: string, quote: Token): Promise<PriceDa
 
             const rateBrlaQuote = parseFloat(quotedAmountOutQuoteFormatted) / amount;
 
-            results.push({
-                id: generateUUID(),
-                timestamp: new Date(),
-                source: source,
-                currency_pair: `BRLA-${quote.symbol}`,
-                amount: amount,
-                rate: rateBrlaQuote
-            });
+            if (rateBrlaQuote < midBrlaToQuote * MIN_RATE_TO_MID_RATIO) {
+                console.warn(
+                    `Skipping BRLA -> ${quote.symbol} quote on ${source} for amount ${amount}: ` +
+                    `rate ${rateBrlaQuote} is far below pool mid ${midBrlaToQuote} (partial fill / insufficient liquidity)`,
+                );
+            } else {
+                results.push({
+                    id: generateUUID(),
+                    timestamp: new Date(),
+                    source: source,
+                    currency_pair: `BRLA-${quote.symbol}`,
+                    amount: amount,
+                    rate: rateBrlaQuote
+                });
+            }
         } catch (error) {
             console.error(`Error fetching BRLA -> ${quote.symbol} quote on ${source} for amount ${amount}:`, error);
         }
