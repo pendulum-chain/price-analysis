@@ -17,8 +17,8 @@ export function sqrtPriceX96ToToken1PerToken0(
     const fractionalPart = scaledPrice % scale;
     const fractionalPartAtPrecision = (fractionalPart * PRICE_DECIMAL_PRECISION) / scale;
 
-    if (integerPart > BigInt(Number.MAX_SAFE_INTEGER)) {
-        throw new RangeError(`Price integer part exceeds Number.MAX_SAFE_INTEGER: ${integerPart}`);
+    if (integerPart >= BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new RangeError(`Price integer part is at or above Number.MAX_SAFE_INTEGER: ${integerPart}`);
     }
 
     return Number(integerPart) + Number(fractionalPartAtPrecision) / Number(PRICE_DECIMAL_PRECISION);

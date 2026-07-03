@@ -13,4 +13,10 @@ describe('sqrtPriceX96ToToken1PerToken0', () => {
 
         expect(sqrtPriceX96ToToken1PerToken0(sqrtPriceX96, 6, 18)).toBe(0.000000000001);
     });
+
+    test('rejects prices above the safe integer boundary', () => {
+        const sqrtPriceX96 = 2n ** 96n;
+
+        expect(() => sqrtPriceX96ToToken1PerToken0(sqrtPriceX96, 22, 6)).toThrow(RangeError);
+    });
 });

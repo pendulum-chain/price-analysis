@@ -80,7 +80,7 @@ export async function getCoinbasePrice(): Promise<PriceDataAttributes[]> {
 
             const rate = parseFloat(data.data.amount);
 
-            if (Number.isNaN(rate)) {
+            if (!Number.isFinite(rate)) {
                 console.error(`Invalid rate data for ${pair}: ${data.data.amount}`);
                 return [];
             }

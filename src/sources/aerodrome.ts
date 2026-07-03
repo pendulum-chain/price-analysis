@@ -46,7 +46,9 @@ export async function getAerodromePrice(): Promise<PriceDataAttributes[]> {
         const decimals1 = TOKEN_DECIMALS[token1];
 
         if (decimals0 === undefined || decimals1 === undefined) {
-            console.error(`Unexpected Aerodrome EURC/USDC token ordering: token0=${token0Raw}, token1=${token1Raw}`);
+            console.error(
+                `Unexpected Aerodrome EURC/USDC pool tokens: token0=${token0Raw}, token1=${token1Raw}; expected EURC=${EURC_ADDRESS} and USDC=${USDC_ADDRESS}`,
+            );
             return [];
         }
 
