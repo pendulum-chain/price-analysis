@@ -13,9 +13,12 @@ import {AMOUNTS} from '../index.ts';
 // BLINDPAY_TOKEN=USDC (or USDT). The source name makes the sandbox origin explicit.
 const BASE_URL = process.env.BLINDPAY_BASE_URL ?? 'https://api.blindpay.com/v1';
 const TOKEN = process.env.BLINDPAY_TOKEN ?? 'USDB';
-// USDB is the sandbox stand-in for USDC; report it under the USDC pair.
-const REPORTED_STABLECOIN = TOKEN === 'USDB' ? 'USDC' : TOKEN;
+// USDB is the sandbox-only stand-in for USDC: report it under the USDC pair and tag the
+// source as sandbox. In production (USDC/USDT) the pair and source reflect the real token.
+const IS_SANDBOX = TOKEN === 'USDB';
+const REPORTED_STABLECOIN = IS_SANDBOX ? 'USDC' : TOKEN;
 const CURRENCY_PAIR = `BRL-${REPORTED_STABLECOIN}`;
+const SOURCE = IS_SANDBOX ? 'BlindPay (sandbox)' : 'BlindPay';
 
 // BlindPay rejects payin quotes below this amount (in cents of the sender currency).
 const MIN_REQUEST_AMOUNT_CENTS = 500;
@@ -92,7 +95,7 @@ export async function getBlindpayPrice(): Promise<PriceDataAttributes[]> {
             results.push({
                 id: generateUUID(),
                 timestamp: new Date(),
-                source: 'BlindPay (sandbox)',
+                source: SOURCE,
                 currency_pair: CURRENCY_PAIR,
                 amount: amount,
                 rate: rate,
