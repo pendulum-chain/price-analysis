@@ -144,7 +144,11 @@ export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
     const url = `${BASE_URL}/instances/${instanceId}/payin-quotes`;
     const results: PriceDataAttributes[] = [];
 
-    for (const amount of AMOUNTS) {
+    // OTC quotes have a ~60k BRL minimum, so most of the shared AMOUNTS fall below it. Add
+    // OTC-only amounts near the minimum for additional data points in the quotable range.
+    const otcAmounts = [...new Set([...AMOUNTS, 60000, 80000])].sort((a, b) => a - b);
+
+    for (const amount of otcAmounts) {
         // `request_amount` is an integer in cents of the sender (BRL) currency.
         const requestAmountCents = Math.round(amount * 100);
         if (requestAmountCents < MIN_REQUEST_AMOUNT_CENTS) {
