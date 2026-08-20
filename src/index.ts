@@ -10,7 +10,7 @@ import {getBinancePrice} from "./sources/binance.ts";
 import {getFastForexPrice} from './sources/fastforex.ts';
 import {getAerodromePrice} from './sources/aerodrome.ts';
 import {getCirclePrice} from './sources/circle.ts';
-import {getBlindpayPrice} from './sources/blindpay.ts';
+import {getBlindpayOtcPrice, getBlindpayPrice} from './sources/blindpay.ts';
 
 // The amounts to fetch prices for
 export const AMOUNTS = [1000, 10000, 50000, 100000];
@@ -32,6 +32,7 @@ async function fetchAndStorePrices() {
             getCoinbasePrice(),
             getCirclePrice(),
             getBlindpayPrice(),
+            getBlindpayOtcPrice(),
         ];
 
         const results = await Promise.all(priceSources);
