@@ -7,19 +7,26 @@ import {AMOUNTS} from '../index.ts';
 // only an API key + instance id (no receiver/KYC/blockchain-wallet setup) and never moves
 // funds. Docs: https://api.blindpay.com/reference
 //
-// NOTE: This targets the BlindPay *sandbox*. Sandbox/dev instances only support the "USDB"
-// token (a 1:1 USD test stablecoin), so we request USDB and report it under the BRL-USDC
-// pair for comparability with the other BRL-USDC sources. In production, set
-// BLINDPAY_TOKEN=USDC (or USDT). The source name makes the sandbox origin explicit.
+// NOTE: Sandbox/dev instances only support the "USDB" token (a 1:1 USD test stablecoin), so
+// by default we request USDB and report it under the BRL-USDC pair for comparability with the
+// other BRL-USDC sources. Production instances only support USDC and USDT: set
+// BLINDPAY_TOKEN=USDC,USDT (comma-separated) to quote both pairs.
 const BASE_URL = process.env.BLINDPAY_BASE_URL ?? 'https://api.blindpay.com/v1';
-const TOKEN = process.env.BLINDPAY_TOKEN ?? 'USDB';
+const TOKENS = (process.env.BLINDPAY_TOKEN ?? 'USDB')
+    .split(',')
+    .map(token => token.trim().toUpperCase())
+    .filter(Boolean);
+
 // USDB is the sandbox-only stand-in for USDC: report it under the USDC pair and tag the
 // source as sandbox. In production (USDC/USDT) the pair and source reflect the real token.
-const IS_SANDBOX = TOKEN === 'USDB';
-const REPORTED_STABLECOIN = IS_SANDBOX ? 'USDC' : TOKEN;
-const CURRENCY_PAIR = `BRL-${REPORTED_STABLECOIN}`;
-const SOURCE = IS_SANDBOX ? 'BlindPay (sandbox)' : 'BlindPay';
-const OTC_SOURCE = IS_SANDBOX ? 'BlindPay OTC (sandbox)' : 'BlindPay OTC';
+function labelsFor(token: string) {
+    const suffix = token === 'USDB' ? ' (sandbox)' : '';
+    return {
+        pair: `BRL-${token === 'USDB' ? 'USDC' : token}`,
+        source: `BlindPay${suffix}`,
+        otcSource: `BlindPay OTC${suffix}`,
+    };
+}
 
 // BlindPay rejects payin quotes below this amount (in cents of the sender currency).
 const MIN_REQUEST_AMOUNT_CENTS = 500;
@@ -57,6 +64,12 @@ export async function getBlindpayPrice(): Promise<PriceDataAttributes[]> {
         return [];
     }
 
+    const results = await Promise.all(TOKENS.map(token => getBlindpayFxPrices(apiKey, instanceId, token)));
+    return results.flat();
+}
+
+async function getBlindpayFxPrices(apiKey: string, instanceId: string, token: string): Promise<PriceDataAttributes[]> {
+    const {pair, source} = labelsFor(token);
     const url = `${BASE_URL}/instances/${instanceId}/payin-quotes/fx`;
     const results: PriceDataAttributes[] = [];
 
@@ -78,7 +91,7 @@ export async function getBlindpayPrice(): Promise<PriceDataAttributes[]> {
                 body: JSON.stringify({
                     currency_type: 'sender',
                     from: 'BRL',
-                    to: TOKEN,
+                    to: token,
                     request_amount: requestAmountCents,
                 }),
                 signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -87,7 +100,7 @@ export async function getBlindpayPrice(): Promise<PriceDataAttributes[]> {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(
-                    `BlindPay quote failed for ${CURRENCY_PAIR} with amount ${amount}: ${response.status} ${response.statusText} - ${errorText}`,
+                    `BlindPay quote failed for ${pair} with amount ${amount}: ${response.status} ${response.statusText} - ${errorText}`,
                 );
                 continue;
             }
@@ -100,7 +113,7 @@ export async function getBlindpayPrice(): Promise<PriceDataAttributes[]> {
 
             if (!Number.isFinite(rate) || rate <= 0) {
                 console.error(
-                    `Invalid BlindPay rate for ${CURRENCY_PAIR} with amount ${amount}: result_amount=${data.result_amount}`,
+                    `Invalid BlindPay rate for ${pair} with amount ${amount}: result_amount=${data.result_amount}`,
                 );
                 continue;
             }
@@ -108,13 +121,13 @@ export async function getBlindpayPrice(): Promise<PriceDataAttributes[]> {
             results.push({
                 id: generateUUID(),
                 timestamp: new Date(),
-                source: SOURCE,
-                currency_pair: CURRENCY_PAIR,
+                source,
+                currency_pair: pair,
                 amount: amount,
                 rate: rate,
             });
         } catch (error) {
-            console.error(`Error fetching BlindPay price for ${CURRENCY_PAIR} with amount ${amount}:`, error);
+            console.error(`Error fetching BlindPay price for ${pair} with amount ${amount}:`, error);
         }
     }
 
@@ -123,10 +136,12 @@ export async function getBlindpayPrice(): Promise<PriceDataAttributes[]> {
 
 // BlindPay OTC quotes — unlike the FX-rate endpoint above, OTC mode is only available on the
 // full payin-quote endpoint (`is_otc: true`), which requires a receiver blockchain wallet.
-// Quotes expire after 5 minutes and are never executed, so no funds move. OTC quotes are only
-// available during business hours; outside of them BlindPay either rejects the request or
+// OTC quotes expire after 10 seconds and are never executed, so no funds move. OTC quotes are
+// only available during business hours; outside of them BlindPay either rejects the request or
 // returns a traditional quote (`is_otc` false), which we skip to keep the OTC series clean.
-// One-time wallet setup: `bun run scripts/setup-blindpay-otc.ts`.
+// One wallet serves every configured token, so in production it must be on a network that
+// supports both USDC and USDT OTC: Polygon, Ethereum or Solana (Base is USDC-only).
+// One-time sandbox wallet setup: `bun run scripts/setup-blindpay-otc.ts`.
 export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
     const apiKey = process.env.BLINDPAY_API_KEY;
     const instanceId = process.env.BLINDPAY_INSTANCE_ID;
@@ -141,11 +156,25 @@ export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
         return [];
     }
 
+    const results = await Promise.all(
+        TOKENS.map(token => getBlindpayOtcPrices(apiKey, instanceId, blockchainWalletId, token)),
+    );
+    return results.flat();
+}
+
+async function getBlindpayOtcPrices(
+    apiKey: string,
+    instanceId: string,
+    blockchainWalletId: string,
+    token: string,
+): Promise<PriceDataAttributes[]> {
+    const {pair, otcSource} = labelsFor(token);
     const url = `${BASE_URL}/instances/${instanceId}/payin-quotes`;
     const results: PriceDataAttributes[] = [];
 
-    // OTC quotes have a ~60k BRL minimum, so most of the shared AMOUNTS fall below it. Add
-    // OTC-only amounts near the minimum for additional data points in the quotable range.
+    // OTC quotes have a minimum trade size (documented as $5,000 USD equivalent; ~60k BRL was
+    // observed in 2026-07), so the smaller shared AMOUNTS fall below it.
+    // Add OTC-only amounts near the minimum for additional data points in the quotable range.
     const otcAmounts = [...new Set([...AMOUNTS, 60000, 80000])].sort((a, b) => a - b);
 
     for (const amount of otcAmounts) {
@@ -169,7 +198,7 @@ export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
                     cover_fees: false,
                     payment_method: 'pix',
                     request_amount: requestAmountCents,
-                    token: TOKEN,
+                    token,
                     partner_fee_id: null,
                     is_otc: true,
                 }),
@@ -178,14 +207,14 @@ export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                // OTC has a minimum trade size (~60k BRL as of 2026-07); smaller amounts are
-                // expected to be rejected, so don't treat them as errors.
-                if (errorText.includes('otc_minimum_amount_not_met')) {
+                // Amounts below the OTC minimum are expected to be rejected, so don't treat them
+                // as errors. First code: observed in 2026-07; second: the one the docs name.
+                if (/otc_minimum_amount_not_met|PAYOUTS_AMOUNT_BELOW_MINIMUM/i.test(errorText)) {
                     console.warn(`BlindPay OTC minimum not met for amount ${amount}, skipping.`);
                     continue;
                 }
                 console.error(
-                    `BlindPay OTC quote failed for ${CURRENCY_PAIR} with amount ${amount}: ${response.status} ${response.statusText} - ${errorText}`,
+                    `BlindPay OTC quote failed for ${pair} with amount ${amount}: ${response.status} ${response.statusText} - ${errorText}`,
                 );
                 continue;
             }
@@ -194,7 +223,7 @@ export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
 
             if (data.is_otc !== true) {
                 console.warn(
-                    `BlindPay returned a non-OTC quote for ${CURRENCY_PAIR} with amount ${amount} (is_otc=${data.is_otc}), skipping. OTC mode is only available during business hours.`,
+                    `BlindPay returned a non-OTC quote for ${pair} with amount ${amount} (is_otc=${data.is_otc}), skipping. OTC mode is only available during business hours.`,
                 );
                 continue;
             }
@@ -205,7 +234,7 @@ export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
 
             if (!Number.isFinite(rate) || rate <= 0) {
                 console.error(
-                    `Invalid BlindPay OTC rate for ${CURRENCY_PAIR} with amount ${amount}: receiver_amount=${data.receiver_amount}`,
+                    `Invalid BlindPay OTC rate for ${pair} with amount ${amount}: receiver_amount=${data.receiver_amount}`,
                 );
                 continue;
             }
@@ -213,13 +242,13 @@ export async function getBlindpayOtcPrice(): Promise<PriceDataAttributes[]> {
             results.push({
                 id: generateUUID(),
                 timestamp: new Date(),
-                source: OTC_SOURCE,
-                currency_pair: CURRENCY_PAIR,
+                source: otcSource,
+                currency_pair: pair,
                 amount: amount,
                 rate: rate,
             });
         } catch (error) {
-            console.error(`Error fetching BlindPay OTC price for ${CURRENCY_PAIR} with amount ${amount}:`, error);
+            console.error(`Error fetching BlindPay OTC price for ${pair} with amount ${amount}:`, error);
         }
     }
 
