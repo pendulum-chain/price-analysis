@@ -21,7 +21,7 @@ test('quotes every configured token under its own pair, skipping amounts below t
         const stablecoinCents = body.request_amount * rate;
         if (body.is_otc) {
             if (body.request_amount < 6_000_000) {
-                return new Response('{"code":"otc_minimum_amount_not_met"}', {status: 400});
+                return new Response('{"code":"PAYOUTS_AMOUNT_BELOW_MINIMUM"}', {status: 400});
             }
             return Response.json({is_otc: true, receiver_amount: stablecoinCents});
         }

@@ -136,8 +136,8 @@ async function getBlindpayFxPrices(apiKey: string, instanceId: string, token: st
 
 // BlindPay OTC quotes — unlike the FX-rate endpoint above, OTC mode is only available on the
 // full payin-quote endpoint (`is_otc: true`), which requires a receiver blockchain wallet.
-// Quotes expire after 5 minutes and are never executed, so no funds move. OTC quotes are only
-// available during business hours; outside of them BlindPay either rejects the request or
+// OTC quotes expire after 10 seconds and are never executed, so no funds move. OTC quotes are
+// only available during business hours; outside of them BlindPay either rejects the request or
 // returns a traditional quote (`is_otc` false), which we skip to keep the OTC series clean.
 // One wallet serves every configured token, so in production it must be on a network that
 // supports both USDC and USDT OTC: Polygon, Ethereum or Solana (Base is USDC-only).
@@ -172,8 +172,9 @@ async function getBlindpayOtcPrices(
     const url = `${BASE_URL}/instances/${instanceId}/payin-quotes`;
     const results: PriceDataAttributes[] = [];
 
-    // OTC quotes have a ~60k BRL minimum, so most of the shared AMOUNTS fall below it. Add
-    // OTC-only amounts near the minimum for additional data points in the quotable range.
+    // OTC quotes have a minimum trade size (documented as $5,000 USD equivalent; ~60k BRL was
+    // observed in 2026-07), so the smaller shared AMOUNTS fall below it.
+    // Add OTC-only amounts near the minimum for additional data points in the quotable range.
     const otcAmounts = [...new Set([...AMOUNTS, 60000, 80000])].sort((a, b) => a - b);
 
     for (const amount of otcAmounts) {
@@ -206,9 +207,9 @@ async function getBlindpayOtcPrices(
 
             if (!response.ok) {
                 const errorText = await response.text();
-                // OTC has a minimum trade size (~60k BRL as of 2026-07); smaller amounts are
-                // expected to be rejected, so don't treat them as errors.
-                if (errorText.includes('otc_minimum_amount_not_met')) {
+                // Amounts below the OTC minimum are expected to be rejected, so don't treat them
+                // as errors. First code: observed in 2026-07; second: the one the docs name.
+                if (/otc_minimum_amount_not_met|PAYOUTS_AMOUNT_BELOW_MINIMUM/i.test(errorText)) {
                     console.warn(`BlindPay OTC minimum not met for amount ${amount}, skipping.`);
                     continue;
                 }
